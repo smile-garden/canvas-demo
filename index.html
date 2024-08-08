@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas</title>
+  <style>
+    canvas, .box {
+      margin-right: 10px;
+      margin-bottom: 10px;
+      width: 300px;
+      height: 300px;
+      display: inline-block;
+      border: 1px solid #eee;
+      cursor: crosshair;
+      vertical-align: top;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas" width="300" height="300"></canvas>
+  <img src="https://www.runoob.com/try/demo_source/img_the_scream.jpg" width="220" height="277" alt="img" id="img"
+    style="display: none;">
+  <script>
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText('one smile', 10, 24);
+    ctx.strokeStyle = "#ffffff";
+    ctx.strokeText('two smile', 10, 48);
+
+    var grd = ctx.createLinearGradient(0, 0, 300, 0);
+    grd.addColorStop(0, "blue");
+    grd.addColorStop(1, "white");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, 300, 300);
+
+
+    var img = document.getElementById('img');
+    img.onload = function () {
+      ctx.drawImage(img, 0, 0, 100, 100);
+      ctx.drawImage(img, 100, 100, 100, 100);
+      ctx.drawImage(img, 200, 200, 100, 100);
+      drawCurve(ctx);
+    };
+
+    function drawCurve(ctx) {
+      ctx.beginPath();
+      ctx.moveTo(40, 200);
+      var cp1x = 20, cp1y = 100;
+      var cp2x = 100, cp2y = 120;
+      var x = 200, y = 200;
+      ctx.lineWidth = 6;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+      /* ctx.bezierCurveTo(cp2x, cp2y, cp1x, cp1y, x, y);
+      ctx.bezierCurveTo(x, y, cp1x, cp1y, cp2x, cp2y); */
+      ctx.stroke();
+    }
+
+  </script>
+
+  <div style="margin-bottom: 30px; display: inline-block; width: 300px; text-align: center; vertical-align: top;">
+    <canvas id="demo5" width="300" height="300"></canvas>
+
+    <button onclick="undo()">撤销</button>
+    <button onclick="redo()">回撤</button>
+    <button onclick="reset()">重置</button>
+    <button onclick="save()">保存</button>
+  </div>
+  <script>
+    var demo5 = document.getElementById("demo5");
+    var ctx5 = demo5.getContext("2d");
+
+    function drawTian(ctxT) {
+      ctxT.strokeStyle = "#f66";
+      ctxT.lineWidth = 6;
+
+      ctxT.beginPath();
+      ctxT.moveTo(3, 3);
+      ctxT.lineTo(297, 3);
+      ctxT.lineTo(297, 297);
+      ctxT.lineTo(3, 297);
+      ctxT.closePath();
+      ctxT.stroke();
+      ctxT.moveTo(0, 150);
+      ctxT.lineTo(300, 150);
+      ctxT.moveTo(150, 0);
+      ctxT.lineTo(150, 300);
+      ctxT.moveTo(0, 0);
+      ctxT.lineTo(300, 300);
+      ctxT.moveTo(0, 300);
+      ctxT.lineTo(300, 0);
+      ctxT.stroke();
+      ctxT.save();
+    }
+    drawTian(ctx5);
+
+    var painting = false;
+    var lastX = 0, lastY = 0;
+    var undoStack = [];
+    var redoStack = [];
+    var tianStack = demo5.toDataURL();
+
+    demo5.addEventListener('mousedown', function (e) {
+      painting = true;
+      lastX = e.offsetX;
+      lastY = e.offsetY;
+    });
+
+    demo5.addEventListener('mouseup', function (e) {
+      undoStack.push(demo5.toDataURL());
+      painting = false;
+    });
+
+    demo5.addEventListener('mouseout', function (e) {
+      painting = false;
+    });
+
+    demo5.addEventListener('mousemove', function (e) {
+      if (!painting) return;
+
+      ctx5.lineWidth = 2;
+      ctx5.strokeStyle = '#000';
+      ctx5.lineCap = 'round';
+
+      ctx5.beginPath();
+      ctx5.moveTo(lastX, lastY);
+      ctx5.lineTo(e.offsetX, e.offsetY);
+      ctx5.stroke();
+
+      lastX = e.offsetX;
+      lastY = e.offsetY;
+    });
+
+    demo5.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 1) {
+        var touch = e.touches[0];
+        painting = true;
+        lastX = touch.pageX - demo5.offsetLeft;
+        lastY = touch.pageY - demo5.offsetTop;
+      }
+    }, false);
+
+    demo5.addEventListener('touchmove', function (e) {
+      if (!painting) return;
+      e.preventDefault();
+
+      var touch = e.touches[0];
+      ctx5.lineWidth = 2;
+      ctx5.strokeStyle = '#000';
+      ctx5.lineCap = 'round';
+
+      ctx5.beginPath();
+      ctx5.moveTo(lastX, lastY);
+      ctx5.lineTo(touch.pageX - demo5.offsetLeft, touch.pageY - demo5.offsetTop);
+      ctx5.stroke();
+
+      lastX = touch.pageX - demo5.offsetLeft;
+      lastY = touch.pageY - demo5.offsetTop;
+    }, false);
+
+    demo5.addEventListener('touchend', function (e) {
+      painting = false;
+      ctx5.beginPath();
+    }, false);
+
+    function undo() {
+      if (!undoStack.length) {
+        alert('已无可撤销内容');
+        return;
+      };
+
+      redoStack.push(undoStack.pop());
+      var imgData = undoStack[undoStack.length - 1] || tianStack;
+
+      redraw(imgData);
+    }
+
+    function redo() {
+      if (!redoStack.length) {
+        alert('已无可回撤内容');
+        return;
+      };
+
+      var imgData = redoStack[redoStack.length - 1];
+      undoStack.push(redoStack.pop());
+      redraw(imgData);
+    }
+
+    function redraw(imgData) {
+      var img = new Image();
+      img.src = imgData;
+      img.onload = function () {
+        ctx5.clearRect(0, 0, demo5.width, demo5.height);
+        ctx5.drawImage(img, 0, 0);
+      };
+    }
+
+    function reset() {
+      redraw(tianStack);
+    }
+
+    function save() {
+      var dataUrl = demo5.toDataURL();
+      var link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = 'sign.png';
+      link.click();
+    }
+  </script>
+
+  <canvas id="demo6" width="300" height="300"></canvas>
+  <script>
+    var demo6 = document.getElementById("demo6");
+    var ctx6 = demo6.getContext("2d");
+
+    drawTian(ctx6);
+  </script>
+
+  <canvas id="demo7" width="300" height="300"></canvas>
+  <script>
+    var canvas7 = document.getElementById("demo7");
+    var ctx7 = canvas7.getContext("2d");
+    var angle7 = 0;
+
+    function draw7(ctx, canvas) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(angle7);
+      ctx.beginPath();
+      ctx.moveTo(100, 100);
+      ctx.lineTo(-100, -100);
+      ctx.stroke();
+
+      ctx.restore();
+      angle7 += 0.01;
+      return function () {
+        requestAnimationFrame(draw7(ctx, canvas));
+      }
+    }
+
+    draw7(ctx7, canvas7)();
+  </script>
+
+  <canvas id="demo2" width="300" height="300"></canvas>
+  <script>
+    var demo2 = document.getElementById("demo2");
+    var ctx2 = demo2.getContext("2d");
+    var demo2Opt = {
+      x: 0,
+      y: 0,
+      dx: 2,
+    };
+
+    function draw2() {
+      ctx2.clearRect(0, 0, demo2.width, demo2.height);
+      ctx2.fillStyle = '#ff0000';
+      ctx2.fillRect(demo2Opt.x, demo2Opt.y, 50, 50);
+
+      demo2Opt.x += demo2Opt.dx;
+
+      if (demo2Opt.x + 50 > demo2.width || demo2Opt.x < 0) {
+        demo2Opt.dx = -demo2Opt.dx;
+      }
+      requestAnimationFrame(draw2);
+    }
+
+    draw2();
+  </script>
+
+  <canvas id="demo4" width="300" height="300"></canvas>
+  <script>
+    var demo4 = document.getElementById("demo4");
+    var ctx4 = demo4.getContext("2d");
+    var angle = 0;
+
+    function draw4() {
+      ctx4.clearRect(0, 0, demo4.width, demo4.height);
+      ctx4.save();
+      ctx4.translate(demo4.width / 2, demo4.height / 2);
+      ctx4.rotate(angle);
+      ctx4.fillStyle = "#ff0000";
+      ctx4.fillRect(-50, -25, 100, 50);
+      ctx4.restore();
+
+      angle += 0.01;
+      requestAnimationFrame(draw4);
+    };
+
+    draw4();
+  </script>
+
+  <canvas id="demo3" width="300" height="300"></canvas>
+  <script>
+    var demo3 = document.getElementById("demo3");
+    var ctx3 = demo3.getContext("2d");
+    var demo3Opt = {
+      x: demo3.width / 2,
+      y: demo3.height - 30,
+      dx: 2,
+      dy: -2,
+    };
+    var ballRadius = 10;
+
+    function drawBall() {
+      ctx3.beginPath();
+      ctx3.arc(demo3Opt.x, demo3Opt.y, ballRadius, 0, Math.PI * 2);
+      ctx3.fillStyle = '#0095dd';
+      ctx3.fill();
+      ctx3.closePath();
+    };
+
+    function draw3() {
+      ctx3.clearRect(0, 0, demo3.width, demo3.height);
+      drawBall();
+
+      if (demo3Opt.x + demo3Opt.dx > demo3.width - ballRadius || demo3Opt.x + demo3Opt.dx < ballRadius) {
+        demo3Opt.dx = -demo3Opt.dx;
+      }
+
+      if (demo3Opt.y + demo3Opt.dy > demo3.height - ballRadius || demo3Opt.y + demo3Opt.dy < ballRadius) {
+        demo3Opt.dy = -demo3Opt.dy;
+      }
+
+      demo3Opt.x += demo3Opt.dx;
+      demo3Opt.y += demo3Opt.dy;
+      requestAnimationFrame(draw3);
+    }
+
+    draw3();
+  </script>
+
+  <canvas id="demo8" width="300" height="300"></canvas>
+  <script>
+    var canvas8 = document.getElementById("demo8");
+    var ctx8 = canvas8.getContext("2d");
+    var angle8 = 0;
+
+    function draw8(ctx, canvas) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(angle8);
+      ctx.strokeStyle = '#ccc';
+
+      var centerX = canvas.width / 2;
+      var centerY = canvas.height / 2;
+      var sideLength = 70;
+
+      function pos(i) {
+        var radians = Math.PI * (0.1 + i * 0.4);
+        var x = sideLength * Math.cos(radians);
+        var y = sideLength * Math.sin(radians);
+        return { x, y };
+      }
+
+      ctx.beginPath();
+      for (var i = 0; i < 5; i++) {
+        var x = (pos(i).x + pos(i < 4 ? i + 1 : 0).x) / 2;
+        var y = (pos(i).y + pos(i < 4 ? i + 1 : 0).y) / 2;
+
+        ctx.arc(x, y, 58, Math.PI * (i * 0.4 - 0.1), Math.PI * (0.7 + i * 0.4), false);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgb(255, 192, 203)';
+      ctx.fill();
+
+      ctx.beginPath();
+      for (var i = 0; i < 5; i++) {
+        if (i === 0) {
+          ctx.moveTo(pos(i).x, pos(i).y);
+        } else {
+          ctx.lineTo(pos(i).x, pos(i).y);
+        }
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+
+      ctx.beginPath();
+      for (var i = 0; i < 5; i++) {
+        var x = (pos(i).x + pos(i < 4 ? i + 1 : 0).x) / 2;
+        var y = (pos(i).y + pos(i < 4 ? i + 1 : 0).y) / 2;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgb(255, 232, 0)';
+      ctx.fill();
+
+      ctx.restore();
+      angle8 += 0.01;
+      return function () {
+        requestAnimationFrame(draw8(ctx, canvas));
+      }
+    }
+
+    draw8(ctx8, canvas8)();
+  </script>
+
+  <div class="box">
+    <input type="file" id="upload" />
+  </div>
+  <script>
+    var ACCEPT = ['image/jpg', 'image/png', 'image/jpeg']; // 所能接受的类型（自定义）
+    var MAXSIZE = 3 * 1024 * 1024; // 上传图片大小限制（自定义）
+    var MAXSIZE_STR = '3MB';
+    var upload = document.getElementById("upload");
+    upload.addEventListener('change', (e) => {
+      console.log(e);
+      var [file] = e.target.files;
+      if (!file) {
+        return;
+      }
+
+      var { type: fileType, size: fileSize } = file;
+
+      if (!ACCEPT.includes(fileType)) {
+        alert(`不支持${fileType}文件类型`);
+        upload.value = '';
+        return;
+      }
+
+      if (fileSize > MAXSIZE) {
+        alert(`文件超出${MAXSIZE_STR}`);
+        upload.value = '';
+        return;
+      }
+
+      coverImageToBase64(file, (base64Image) => compress(base64Image, uploadServer))
+    });
+
+    function coverImageToBase64(file, callback) {
+      console.log('coverImageToBase64');
+      var reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.addEventListener('load', function(e) {
+        var base64Image = reader.result;
+        callback && callback(base64Image);
+        reader = null;
+      });
+    };
+
+    function compress(base64Image, callback) {
+      console.log('compressing');
+      var maxW = 800;
+      var maxH = 800;
+      var image = new Image();
+      image.src = base64Image;
+
+      image.addEventListener('load', function(e) {
+        console.log('image loaded');
+        var radio; // 压缩比
+        var needCompress = false;
+        if (image.naturalWidth > maxW) {
+          needCompress = true;
+          ratio = image.naturalWidth / maxW;
+          maxH = image.naturalHeight / ratio;
+          console.log('111', maxW, maxH);
+        }
+        if (image.naturalHeight > maxH) {
+          needCompress = true;
+          ratio = image.naturalHeight / maxH;
+          maxW = image.naturalWidth / ratio;
+          console.log('222', maxW, maxH);
+        }
+        if (!needCompress) {
+          maxW = image.naturalWidth;
+          maxH = image.naturalHeight;
+        }
+
+        var canvasImg = document.createElement('canvas');
+        canvasImg.setAttribute('id', '__compress__');
+        canvasImg.width = maxW;
+        canvasImg.height = maxH;
+        canvasImg.style.visibility = 'hidden';
+        document.body.appendChild(canvasImg);
+        var ctxImg = canvasImg.getContext('2d');
+        ctxImg.clearRect(0, 0, maxW, maxH);
+        ctxImg.drawImage(image, 0, 0, maxW, maxH);
+        console.log(maxW, maxH);
+        var compressImage = canvasImg.toDataURL('image/png', 0.9);
+        callback && callback(compressImage);
+      });
+    };
+
+    function uploadServer(compressImage) {
+      console.log('upload to server')
+      console.log(compressImage)
+    }
+  </script>
+
+  <canvas id="demo9" width="300" height="300"></canvas>
+  <script>
+    var canvas9 = document.getElementById("demo9");
+    var ctx9 = canvas9.getContext("2d");
+    var id9;
+    function draw9(ctx) {
+      for (var i = 0; i < 3; i++) {
+        for (var j = 0; j < 6; j++) {
+          ctx.fillStyle = `rgb(${randomInt()}, ${randomInt()}, ${randomInt()})`;
+          ctx.fillRect(j * 50, i * 50, 50, 50);
+        }
+      }
+      
+      for (var i = 3; i < 6; i++) {
+        for (var j = 0; j < 6; j++) {
+          ctx.strokeStyle = `rgb(${randomInt()}, ${randomInt()}, ${randomInt()})`;
+          ctx.lineWidth = 6;
+          ctx.strokeRect(j * 50 + 3, i * 50 + 3, 44, 44);
+        }
+      }
+
+      return () => {
+        id9 = requestAnimationFrame(draw9(ctx));
+      };
+    }
+
+    draw9(ctx9)();
+
+    function randomInt(from = 0, to = 255) {
+      return parseInt(Math.random() * (to - from + 1) + from);
+    }
+
+    setTimeout(() => {
+      cancelAnimationFrame(id9);
+    }, 10000);
+  </script>
+
+  <canvas id="demo10" width="300" height="300"></canvas>
+  <script>
+    var canvas10 = document.getElementById("demo10");
+    var ctx10 = canvas10.getContext("2d");
+
+    function draw10(ctx) {
+      ctx.fillStyle = "blue";
+      ctx.fillRect(0, 0, 150, 150);
+      ctx.globalCompositeOperation = "xor";
+      ctx.fillStyle = "red";
+      ctx.fillRect(75, 75, 150, 150);
+    }
+    draw10(ctx10);
+  </script>
+
+  <canvas id="demo11" width="300" height="300"></canvas>
+  <script>
+    var canvas11 = document.getElementById("demo11");
+    var ctx11 = canvas11.getContext("2d");
+
+    function draw11(ctx) {
+      ctx.fillStyle = "blue";
+      ctx.fillRect(0, 0, 150, 150);
+
+      ctx.beginPath();
+      ctx.arc(20, 20, 100, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = "pink";
+      ctx.fillRect(20, 20, 100, 100);
+    }
+    draw11(ctx11);
+  </script>
+
+  <canvas id="demo12" width="300" height="300"></canvas>
+  <script>
+    var canvas12 = document.getElementById("demo12");
+    var ctx12 = canvas12.getContext("2d");
+    var pi = Math.PI;
+
+    function draw12(ctx) {
+      drawDial(ctx);
+      drawAllHands(ctx);
+
+      return () => {
+        requestAnimationFrame(draw12(ctx));
+      };
+    }
+    draw12(ctx12)();
+
+    function drawDial(ctx) {
+      ctx.clearRect(0, 0, canvas12.width, canvas12.height);
+      ctx.save();
+      ctx.translate(canvas12.width / 2, canvas12.height / 2);
+      ctx.beginPath();
+      ctx.lineWidth = 6;
+      ctx.arc(0, 0, 147, 0, 2 * pi);
+      ctx.stroke();
+      ctx.closePath();
+
+      for (var i = 0; i < 60; i++) {
+        ctx.save();
+        ctx.rotate(-pi / 2 + i * pi / 30);
+        ctx.beginPath();
+        ctx.lineWidth = i % 5 ? 2 : 6;
+        ctx.moveTo(124, 0);
+        ctx.lineTo(140, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      for (var i = 1; i <= 12; i++) {  
+        var angle = (i / 12) * 2 * pi - pi / 2;  
+        var x = 110 * Math.cos(angle);  
+        var y = 110 * Math.sin(angle);  
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(i.toString(), x, y + 8);  
+      }
+
+      ctx.restore();
+    }
+
+    function drawAllHands(ctx) {
+      var time = new Date();
+      var h = time.getHours();
+      var m = time.getMinutes();
+      var s = time.getSeconds();
+      var sAngle = pi / 180 * 6 * s;
+      var mAngle = pi / 180 * 6 * m + sAngle / 60;
+      var hAngle = pi / 180 * 30 * h + mAngle / 12;
+
+      drawHand(hAngle, 70, 6, '#000', ctx)
+      drawHand(mAngle, 90, 4, '#000', ctx)
+      drawHand(sAngle, 110, 2, 'red', ctx)
+      ctx.arc(150, 150, 5, 0, 2 * pi);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+    }
+
+    function drawHand(angle, len, width, color, ctx) {
+      ctx.save();
+      ctx.translate(canvas12.width / 2, canvas12.height / 2);
+      ctx.rotate(- pi / 2 + angle);
+      ctx.beginPath();
+      ctx.moveTo(-8, 0)
+      ctx.lineTo(len, 0);
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
+      ctx.lineCap = "round";
+      ctx.stroke();
+      ctx.closePath();
+      ctx.restore();
+    }
+  </script>
+</body>
+
+</html>
